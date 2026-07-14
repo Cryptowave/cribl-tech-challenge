@@ -159,6 +159,24 @@ cd ../deploy-leaders
 Run Terraform in `aws-code-deploy-leaders` to stand up the pipeline, then migrate to
 `deploy-leaders` and invoke `./deploy.sh` to trigger it.
 
+> **Manual step — required before Workers will join.** Once the deploy finishes, log in to
+> the UI on **both** Leader nodes (`https://<leader-ip>:9000`) and complete the initial
+> configuration on each:
+>
+> 1. Set the admin credentials (first login prompts for them).
+> 2. Set the node's mode to **Leader** (distributed mode).
+> 3. Change the **registration token** to match the value Terraform generated and wrote to
+>    `cribl-stream/distributed-auth-token` in Secrets Manager:
+>
+>    ```bash
+>    aws secretsmanager get-secret-value \
+>      --secret-id cribl-stream/distributed-auth-token \
+>      --region us-east-2 --query SecretString --output text
+>    ```
+>
+> This has to be done on **both** Leaders — the Worker's `install.sh` pulls that same token
+> out of Secrets Manager, so the tokens must match or registration fails.
+
 ### 4. Workers
 
 ```bash
@@ -190,3 +208,68 @@ depends on DNS.
 If your SES account is still in the sandbox, the recipient address must also be a verified
 identity. `verify_recipient_identity = true` (the default) creates it, and you click the link
 AWS emails you. Set it to `false` once the account has production access.
+
+---
+
+## Considerations
+
+Things I'd have taken further with more time on the clock.
+
+### Recovery and resilience
+
+The biggest one. I'm not happy that failover between the Leaders — getting the Worker to
+re-join the surviving Leader — is a manual process. I'm genuinely unsure whether that would
+bite in a real-world deployment, but without a license to configure Cribl's built-in
+resilience settings, this was the best I could come up with inside the time constraints. If
+I went deeper here it would be on automating that recovery path end to end rather than
+documenting it as a runbook step.
+
+### Deployment automation
+
+The deploy is pipeline-based but manually triggered. The obvious next steps are to have it
+deploy automatically on detection of a new binary being available, or to trigger a pipeline
+that asks for authorization when a new release lands. I kept it to a simple manual-trigger
+deploy pipeline to stay inside the time budget — hopefully close enough to convey the spirit
+and direction of thought for continuous deployment to the application. There's probably a lot
+more to do here in the real world, but it works.
+
+### Documentation
+
+I used Claude for a lot of the READMEs and didn't have as much time as I'd like to break them
+down and review them line by line. With more time, more human review would have happened. That
+said, I think what's here is fully usable in its current state.
+
+---
+
+## Recovery steps workbook
+
+When an email notification arrives indicating an instance is down:
+
+1. **Log in to the instance with SSM** and validate that the Cribl service is healthy.
+
+   ```bash
+   aws ssm start-session --target <instance-id> --region us-east-2
+   sudo systemctl status cribl
+   ```
+
+2. **If the instance cannot be reached or the service cannot be recovered**, fail over to the
+   other Leader. Edit `deploy-workers/scripts/install.sh` and change the Leader IP to the
+   secondary Leader's IP.
+
+3. **Re-run the Worker deployment** to cut the Worker over to the healthy Leader:
+
+   ```bash
+   cd deploy-workers
+   ./deploy.sh
+   ```
+
+   The Worker re-registers against the Leader IP in `install.sh`, so this is what actually
+   moves it to the surviving node.
+
+---
+
+## AI usage
+
+This was built primarily with **Claude Sonnet** on a standard Claude Pro subscription. The
+whole process — infrastructure, deployment scripts, and documentation — consumed roughly
+**43% of the credit balance for a daily window**.
