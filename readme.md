@@ -6,6 +6,9 @@ through SNS → Lambda → SES.
 
 Everything is deployed into **us-east-2**.
 
+For the full end-to-end design — network layout, HA model, deploy flow, and alerting path —
+see [`docs/architecture.md`](docs/architecture.md).
+
 ---
 
 ## **Start Time Tech Challenge**
