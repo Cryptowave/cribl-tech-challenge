@@ -24,7 +24,7 @@ mkdir -p /opt/cribl
 # intervention. 
 {
   set +x
-  curl -sG 'http://10.0.1.144:9000/init/install-worker.sh' \
+  curl -sG 'http://10.0.1.195:9000/init/install-worker.sh' \
     --data-urlencode 'group=default' \
     --data-urlencode "token=$AUTH_TOKEN" \
     --data-urlencode 'download_url=' \

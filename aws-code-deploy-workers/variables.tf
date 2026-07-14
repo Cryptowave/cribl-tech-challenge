@@ -7,7 +7,7 @@ variable "app_name" {
 variable "artifact_bucket_name" {
   description = "Name of the S3 bucket that holds CodeDeploy revision bundles"
   type        = string
-  default     = "cribl-deploy-artifacts-minfanger-worker"
+  default     = "cribl-deploy-artifacts-minfanger-worker-us-east-2"
 }
 
 variable "instance_role_name" {
