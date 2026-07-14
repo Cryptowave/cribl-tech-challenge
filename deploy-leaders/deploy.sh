@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Zips appspec.yml + scripts/, uploads to the artifact bucket created by
-# automated-deploy-leaders, and triggers a CodeDeploy deployment. Terraform
+# aws-code-deploy-leaders, and triggers a CodeDeploy deployment. Terraform
 # state outputs are used so this stays correct if the bucket/app/group
 # names ever change - no names are hardcoded here.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TF_DIR="$SCRIPT_DIR/../automated-deploy-leaders"
+TF_DIR="$SCRIPT_DIR/../aws-code-deploy-leaders"
 REGION="us-east-2"
 
 BUCKET="$(terraform -chdir="$TF_DIR" output -raw artifact_bucket_name)"
