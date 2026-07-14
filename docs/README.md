@@ -5,6 +5,7 @@ Code walkthroughs for each Terraform root and CodeDeploy bundle in this repo. St
 
 | Doc | Covers |
 | --- | --- |
+| [architecture](architecture.md) | Infrastructure diagrams — runtime layout, delivery pipeline, alerting path |
 | [aws-networking-setup](aws-networking-setup.md) | VPC, subnets, IGW, routing |
 | [aws-infrastructure-init](aws-infrastructure-init.md) | EC2 instances, security groups, IAM, Secrets Manager, userdata / CloudWatch agent |
 | [aws-code-deploy-leaders](aws-code-deploy-leaders.md) | Leader CodeDeploy pipeline + the `deploy-leaders/` revision bundle |
