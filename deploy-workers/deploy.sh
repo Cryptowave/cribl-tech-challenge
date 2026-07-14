@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Zips appspec.yml + scripts/, uploads to the artifact bucket created by
-# automated-deploy-workers, and triggers a CodeDeploy deployment against the
-# worker deployment group. Mirrors ../deploy/deploy.sh for the leader, but
-# points at the separate automated-deploy-workers Terraform root (its own
-# CodeDeploy app/group/bucket, scoped to Role=worker instances).
+# aws-code-deploy-workers, and triggers a CodeDeploy deployment against the
+# worker deployment group. Mirrors ../deploy-leaders/deploy.sh, but points at
+# the separate aws-code-deploy-workers Terraform root (its own CodeDeploy
+# app/group/bucket, scoped to Role=worker instances).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TF_DIR="$SCRIPT_DIR/../automated-deploy-workers"
+TF_DIR="$SCRIPT_DIR/../aws-code-deploy-workers"
 REGION="us-east-2"
 
 BUCKET="$(terraform -chdir="$TF_DIR" output -raw artifact_bucket_name)"
