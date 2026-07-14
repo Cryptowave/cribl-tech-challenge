@@ -248,6 +248,22 @@ said, I think what's here is fully usable in its current state.
 
 When an email notification arrives indicating an instance is down:
 
+![Alert email](images/alert-email.png)
+
+*The alert as it lands in the inbox — sent from `alerts@merleinfanger.com` via SES. The subject
+line names the failed instance (`Cribl service failed on leader-primary`), which the Lambda
+recovers from the CloudWatch alarm name, and the body points back at this workbook.*
+
+Before touching anything, confirm the alarm in the CloudWatch console rather than trusting the
+email alone:
+
+![Service status check](images/service-status-check.png)
+
+*CloudWatch Alarms filtered to `State = Alarm`. `cribl-stream-service-down-leader-primary` is
+**In alarm**, with the condition shown as `procstat_lookup_pid_count < 1 for 2 datapoints within
+2 minutes` — the Cribl process has been absent from that host for two consecutive 60s periods.
+Actions are enabled, which is why the email above fired.*
+
 1. **Log in to the instance with SSM** and validate that the Cribl service is healthy.
 
    ```bash
@@ -268,6 +284,63 @@ When an email notification arrives indicating an instance is down:
 
    The Worker re-registers against the Leader IP in `install.sh`, so this is what actually
    moves it to the surviving node.
+
+---
+
+## Pipeline views and other images
+
+The rest of the screenshots in [`images/`](images/), and what each one is showing.
+
+### Triggering a deployment
+
+![Deploy step 1](images/deploy-step-1.png)
+
+`./deploy.sh` running from `deploy-leaders/` on the left, the CodeDeploy console on the right.
+The script zips the revision bundle (`appspec.yml` plus the `scripts/` hooks — `install.sh`,
+`lib.sh`, `start.sh`, `stop.sh`, `validate.sh`), uploads it to the `cribl-deploy-artifacts-…`
+S3 bucket, and starts the deployment; the console picks it up immediately as deployment
+`d-7OEL2BEAJ`, **In progress**, in-place on EC2 against the `cribl-stream-instances` deployment
+group. This is the same flow for Workers, just pointed at the Worker application.
+
+### Worker registering to the Leader
+
+![Register to Main](images/register-to-main.png)
+
+The end state of a successful Worker deploy. CodeDeploy on the left reports **Succeeded** —
+1 of 1 instances updated, all lifecycle events through `ValidateService` green, in 31 seconds.
+The Cribl Leader UI on the right confirms the other half of the story: the `default` worker
+group now shows **1 Worker**, meaning `install.sh` pulled the auth token from Secrets Manager,
+hit the Leader's `/init/install-worker.sh` endpoint, and the node registered itself. Deploy
+success and registration success are two different things — this is the picture where both are
+true.
+
+### Healthy hosts
+
+![Healthy hosts](images/healthy-hosts.png)
+
+CloudWatch Alarms filtered to `State = OK`: `cribl-stream-service-down-worker` and
+`cribl-stream-service-down-leader-passive` both green, both watching the same
+`procstat_lookup_pid_count` condition. This is the steady state — one alarm per instance, and
+what you should see on every host once recovery is complete. (Note that only two are listed
+here: `leader-primary` is in the alarm state at this moment, and appears in the failure
+screenshot above.)
+
+### Failover demo
+
+![Failover demo](images/failover-demo.png)
+
+The failover in flight. CodeDeploy shows the Worker deployment succeeding after the Leader IP in
+`install.sh` was pointed at the second Leader. The two Cribl UIs are the two Leaders side by
+side: the original Leader (`3.15.139.78`) still reports **1 Worker**, while the new target
+(`18.119.192.51`) reports **0 Workers** — the Worker has not moved across yet.
+
+![Failover demo 2](images/failover-demo-2.png)
+
+The same two Leaders after the re-deploy settles. The counts have swapped: `3.15.139.78` now
+shows **0 Workers** and `18.119.192.51` shows **1 Worker**, with 2 processes and CPU/memory
+reporting against it. The Worker has re-registered against the surviving Leader — this is step 3
+of the recovery workbook actually working, and the reason the runbook says to re-run
+`./deploy.sh` rather than restarting anything on the Worker itself.
 
 ---
 
